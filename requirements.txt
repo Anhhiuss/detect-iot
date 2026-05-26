@@ -1,0 +1,10 @@
+ultralytics>=8.3.4
+opencv-python
+numpy
+# RPi.GPIO chỉ cần trên Raspberry Pi (Linux), tránh lỗi cài đặt trên Windows
+RPi.GPIO==0.7.1; platform_system == "Linux"
+# Tùy chọn: điều khiển servo qua PCA9685 (chỉ cài trên Pi khi dùng ServoKit)
+# pip install adafruit-circuitpython-servokit
+# MQTT cho ESP32 remote control (tùy chọn)
+paho-mqtt>=1.6.1
+

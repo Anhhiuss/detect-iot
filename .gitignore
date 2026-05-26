@@ -1,0 +1,27 @@
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# local venvs
+venv/
+.venv/
+
+# Ultralytics runs/artifacts
+runs/
+
+# datasets + weights
+# Ignore local datasets/images to avoid heavy pushes
+dataset/
+dataset_yolo/
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.tif
+*.tiff
+
+# OS/editor
+.vscode/
+.idea/
+

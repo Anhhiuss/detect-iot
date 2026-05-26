@@ -1,0 +1,11 @@
+path: dataset_yolo
+
+train: images/train
+val: images/val
+
+# Weed-only detector:
+# - Detect weed presence as a single class.
+# - Keep object-level boxes around real weeds (avoid full-frame labels).
+names:
+  0: weed
+
