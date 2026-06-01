@@ -120,6 +120,21 @@ def _backend_flag(backend: str) -> int:
     return 0
 
 
+def _fire_laser(laser, laser_pulse_sec: float, state_debug_log: bool) -> None:
+    fire_sec = laser_pulse_sec if laser_pulse_sec > 0 else 0.05
+    if state_debug_log:
+        fire_sec = max(fire_sec, 2.0)
+        print(f"[LASER] ON for {fire_sec:.2f}s", flush=True)
+    if fire_sec > 0:
+        laser.pulse(fire_sec)
+    else:
+        laser.on()
+        time.sleep(0.05)
+        laser.off()
+    if state_debug_log:
+        print("[LASER] OFF", flush=True)
+
+
 def open_camera(index: int, backend: str = "auto") -> cv2.VideoCapture:
     """
     TASK: Camera I/O (mở camera theo backend, cross-platform).
@@ -470,12 +485,11 @@ def main(
                     and (now_ts - last_fire_ts) >= cooldown_sec
                 )
                 if can_fire:
-                    if laser_pulse_sec > 0:
-                        laser.pulse(laser_pulse_sec)
-                    else:
-                        laser.on()
-                        time.sleep(0.05)
-                        laser.off()
+                    print("[LASER] ON", flush=True)
+                    laser.on()
+                    time.sleep(max(3.0, laser_pulse_sec))
+                    print("[LASER] OFF", flush=True)
+                    laser.off()
                     last_fire_ts = time.monotonic()
                     if state_debug_log:
                         print(
@@ -581,12 +595,7 @@ def main(
                             print(f"[SM] t={now_ts:.3f} FIRE->SCAN no_target")
                         sm_state = "SCAN"
                     elif now_ts >= sm_cooldown_until and now_ts - last_fire_ts >= cooldown_sec:
-                        if laser_pulse_sec > 0:
-                            laser.pulse(laser_pulse_sec)
-                        else:
-                            laser.on()
-                            time.sleep(0.05)
-                            laser.off()
+                        _fire_laser(laser, laser_pulse_sec, state_debug_log)
                         last_fire_ts = time.monotonic()
                         scan_to_fire_ms = int((last_fire_ts - sm_scan_started_at) * 1000)
                         target_to_fire_ms = int((last_fire_ts - sm_target_started_at) * 1000)
@@ -695,10 +704,7 @@ def main(
                     hit_count = sum(hit_window)
                     vote_ready = len(hit_window) >= min_hits and hit_count >= min_hits
                     if confirm_count >= confirm_frames and vote_ready and stable_to_fire:
-                        if laser_pulse_sec > 0:
-                            laser.pulse(laser_pulse_sec)
-                        else:
-                            laser.on()
+                        _fire_laser(laser, laser_pulse_sec, state_debug_log)
 
                     if show:
                         cv2.circle(frame, (int(x_center), int(y_center)), 5, (0, 0, 255), -1)

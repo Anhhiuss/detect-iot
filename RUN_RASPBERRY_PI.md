@@ -35,8 +35,8 @@ sudo apt install -y python3-picamera2
 
 Có hai cách chạy:
 
-- **`main.py`**: dùng servo GPIO (pin 17/27); hỗ trợ Pi Camera (--picam2).
-- **`run_weed_laser.py`**: script đơn giản theo đúng 6 bước (YOLO → tọa độ → góc servo → servo + laser); hỗ trợ **GPIO** hoặc **PCA9685** (--pca9685). Công thức servo đơn giản `(x/width)*180`: dùng thêm `--simple`.
+- **`main.py`**: chạy Pi-only, YOLO trên Pi, servo PCA9685, laser GPIO và motor L298N.
+- **`run_weed_laser.py`**: script cũ theo workflow khác; nếu bạn chỉ dùng Pi-only thì ưu tiên `main.py`.
 
 ### USB webcam (camera index 0)
 
@@ -75,29 +75,65 @@ python3 main.py --camera 0 --show --fps 5 --imgsz 320
 | `--imgsz`  | `320`          | Kích thước inference (320 nhanh, 640 chính xác) |
 | `--show`   | tắt            | Bật cửa sổ xem ảnh |
 | `--picam2` | tắt            | Dùng Pi Camera (CSI) qua picamera2 |
-| `--class-id` | `0`          | Class cần nhắm (0 = Black-grass theo weed.yaml) |
+| `--class-id` | `1`          | Class cần nhắm (0 = crop, 1 = weed) |
 
-## 6. Kết nối phần cứng (servo + laser)
+## 6. Kết nối phần cứng
 
-- **Servo pan**: GPIO 17 (BCM), **Servo tilt**: GPIO 27 (BCM) — chỉnh trong `hardware/servo_control.py` nếu khác.
-- **Laser**: GPIO 22 (BCM) — chỉnh trong `hardware/laser_control.py` nếu khác.
+### Servo qua PCA9685
 
-Nếu chạy **không gắn Pi** (test trên PC): servo và laser chạy chế độ **simulate** (in log, không điều khiển thật).
+Dây đang nối theo cấu hình bạn xác nhận:
 
-## 7. Dùng servo qua PCA9685 (ServoKit)
+- Servo pan → PCA9685 channel 14
+- Servo tilt → PCA9685 channel 15
+- PCA9685 nối I2C với Pi (SDA, SCL, VCC, GND)
 
-Nếu bạn nối servo qua board **PCA9685** (I2C):
+### Laser
+
+- Laser + transistor: VCC, pin 16, GND
+- Trong code, laser đang dùng **BOARD pin 16**
+
+### Motor qua L298N
+
+- IN3 → pin 32
+- IN4 → pin 33
+
+Trong code, motor đang dùng **BOARD numbering** nên sẽ khớp trực tiếp với dây này.
+
+Nếu chạy **không có Pi thật** thì các module sẽ tự chuyển sang chế độ **simulate** và chỉ in log.
+
+### Cách chạy
+
+```bash
+python scripts/selftest_pi_hardware.py
+python main.py --picam2 --imgsz 320 --fps 8
+```
+
+## 7. Cài thêm cho PCA9685
+
+Nếu dùng PCA9685/ServoKit:
 
 ```bash
 pip install adafruit-circuitpython-servokit
-python run_weed_laser.py --pca9685 --imgsz 320
+pip install adafruit-blinka
 ```
 
-Sơ đồ nối dây chi tiết: xem **WIRING_RASPBERRY_PI.md**.  
-Tối ưu FPS 15–20: xem **OPTIMIZE_PI_FPS.md**.  
-**Calibrate camera → servo** để laser bắn trúng cỏ: xem **CALIBRATE_CAMERA_SERVO.md**.
+Bật I2C rồi kiểm tra thiết bị:
 
-## 8. FPS thực tế trên Pi 4
+```bash
+sudo raspi-config
+sudo i2cdetect -y 1
+```
+
+## 8. Chạy self-test phần cứng
+
+Script test nhanh servo, laser và motor:
+
+```bash
+python scripts/selftest_pi_hardware.py
+```
+
+## 9. FPS thực tế trên Pi 4
 
 - `imgsz=320`, YOLOv8n: khoảng **5–10 FPS** tùy Pi 4 2GB/4GB.
 - Giảm `--fps` xuống 5 nếu Pi bị quá tải.
+- Model `models/best.pt` hiện có **2 class**: `0=crop`, `1=weed`.

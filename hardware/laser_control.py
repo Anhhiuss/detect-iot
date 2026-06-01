@@ -3,6 +3,8 @@ from __future__ import annotations
 import threading
 import time
 
+from hardware.wiring import WIRING
+
 try:
     import RPi.GPIO as GPIO
 except ImportError:  # Running on PC
@@ -10,7 +12,7 @@ except ImportError:  # Running on PC
 
 
 class LaserController:
-    def __init__(self, pin: int = 22, active_high: bool = True, simulate_if_no_gpio: bool = True) -> None:
+    def __init__(self, pin: int = WIRING.laser_pin, active_high: bool = True, simulate_if_no_gpio: bool = True) -> None:
         self.pin = pin
         self.active_high = active_high
         self.simulate = GPIO is None and simulate_if_no_gpio
@@ -22,7 +24,10 @@ class LaserController:
             print("[LASER] Running in simulation mode (no RPi.GPIO).")
             return
 
-        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+        current_mode = GPIO.getmode()
+        if current_mode is None:
+            GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.pin, GPIO.OUT)
         self.off()
 
@@ -76,10 +81,17 @@ class LaserController:
         t = self._pulse_thread
         if t is not None and t.is_alive():
             t.join(timeout=3.0)
-        self.off()
         if self.simulate:
             return
-        GPIO.cleanup(self.pin)
+        try:
+            if GPIO.getmode() is not None:
+                self.off()
+        except Exception:
+            pass
+        try:
+            GPIO.cleanup(self.pin)
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

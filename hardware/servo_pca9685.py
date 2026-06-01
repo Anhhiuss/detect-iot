@@ -6,12 +6,14 @@ Cài đặt trên Raspberry Pi:
   pip install adafruit-circuitpython-servokit
 
 Kết nối: PCA9685 nối I2C với Pi (SDA, SCL, VCC, GND).
-Servo pan → channel 0, Servo tilt → channel 1 (có thể đổi trong ServoKitConfig).
+Servo pan → channel 14, Servo tilt → channel 15.
 """
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+
+from hardware.wiring import WIRING
 
 try:
     from adafruit_servokit import ServoKit
@@ -22,9 +24,9 @@ except ImportError:
 
 @dataclass
 class ServoKitConfig:
-    """Channel PCA9685: 0 = pan, 1 = tilt (có thể đổi theo wiring)."""
-    pan_channel: int = 0
-    tilt_channel: int = 1
+    """Channel PCA9685: values are sourced from `hardware.wiring`."""
+    pan_channel: int = WIRING.servo_pan_channel
+    tilt_channel: int = WIRING.servo_tilt_channel
     min_angle: float = 0.0
     max_angle: float = 180.0
 
@@ -42,7 +44,6 @@ class ServoControllerPCA9685:
             return
 
         self._kit = _SERVOKIT(channels=16)
-        # Đưa về góc giữa trước
         self._kit.servo[self.cfg.pan_channel].angle = 90
         self._kit.servo[self.cfg.tilt_channel].angle = 90
 
@@ -63,9 +64,8 @@ class ServoControllerPCA9685:
     def cleanup(self) -> None:
         if self.simulate:
             return
-        # ServoKit không có stop; có thể set về 90
         try:
-            self._kit.servo[self.cfg.pan_channel].angle = None  # release
+            self._kit.servo[self.cfg.pan_channel].angle = None
             self._kit.servo[self.cfg.tilt_channel].angle = None
         except Exception:
             pass
