@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import time
+import hardware.wiring 
+import WIRING
 from dataclasses import dataclass
 
 try:
@@ -32,7 +34,10 @@ class ServoController:
             print("[SERVO] Running in simulation mode (no RPi.GPIO).")
             return
 
-        GPIO.setmode(GPIO.BCM)
+        GPIO.setmode(
+            GPIO.BOARD if WIRING.use_board_numbering 
+            else GPIO.BCM
+        )
         GPIO.setup(self.cfg.pan_pin, GPIO.OUT)
         GPIO.setup(self.cfg.tilt_pin, GPIO.OUT)
 

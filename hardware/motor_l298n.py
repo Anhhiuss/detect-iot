@@ -49,6 +49,7 @@ class MotorL298N:
         self.stop()
 
     def _write(self, in3: bool, in4: bool) -> None:
+        print(f"[WRITE] IN3={in3} IN4={in4}")
         if self.simulate:
             print(f"[MOTOR] IN3={int(in3)} IN4={int(in4)}")
             return
@@ -57,12 +58,14 @@ class MotorL298N:
         GPIO.output(self.cfg.in4, GPIO.HIGH if in4 else GPIO.LOW)
 
     def forward(self) -> None:
+        print ("[MOTOR CLASS] Forward()")
         self._write(True, False)
 
     def backward(self) -> None:
         self._write(False, True)
 
     def stop(self) -> None:
+        print ("[MOTOR CLASS] Stop()")
         self._write(False, False)
 
     def cleanup(self) -> None:

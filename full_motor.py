@@ -188,6 +188,7 @@ def list_cameras(start: int = 0, end: int = 5, backend: str = "auto") -> None:
         ok = cap.isOpened()
         if ok:
             ret, frame = cap.read()
+            print(".", end="", flush=True)
             ok = bool(ret and frame is not None)
         cap.release()
         if ok:
@@ -316,6 +317,7 @@ def main(
     servo = None
     if not fixed_cam:
         if use_pca9685:
+            from hardware.motor_l298n import MotorL298N
             from hardware.servo_pca9685 import ServoControllerPCA9685, ServoKitConfig
             print("[STEP] Init PCA9685...")
             servo = ServoControllerPCA9685(
@@ -331,7 +333,22 @@ def main(
 
     # TASK: Laser init (GPIO) + safety default (OFF mỗi frame).
     from hardware.laser_control import LaserController
+    from hardware.motor_l298n import MotorL298N
+
     laser = LaserController()
+    motor = MotorL298N()
+    import RPi.GPIO as GPIO
+
+    print("GPIO MODE =", GPIO.getmode())
+    print("BOARD expected =", motor.cfg.use_board_numbering)
+
+    print("[MOTOR] FORWARD")
+    motor.forward()
+    print("[DEBUG] after motor forward")
+    time.sleep(0.1)
+    print("[MOTOR] STOP")
+    motor.stop()
+    motor_running = True
 
     cfg = None if use_simple_formula else CameraConfig(
         offset_pan=offset_pan,
@@ -362,6 +379,8 @@ def main(
 
     try:
         while True:
+            print("[LOOP]", flush=True)
+
             if drop_frames > 0:
                 for _ in range(drop_frames):
                     if not cap.grab():
@@ -663,6 +682,17 @@ def main(
                 # TASK: Single-target loop (aim + confirm/vote + optional turret visual-servo + FIRE).
                 best = _select_target(dets, w, h, aim=aim)
                 if best is not None:
+                    print(
+                        f"[TARGET] conf={best['conf']:.2f} "
+                        f"cx={best['cx']:.0f}"
+                    )
+
+                    if motor_running:
+                        motor.stop()
+                        time.sleep(1.0)
+                        motor_running = False
+                        print("[MOTOR] STOP")
+
                     cur_center = (best["cx_norm"], best["cy_norm"])
                     if prev_center is None:
                         confirm_count = 1
@@ -724,8 +754,22 @@ def main(
                         servo.set_angle(pan=pan, tilt=tilt)
 
                     # Chỉ bắn laser sau khi cỏ xuất hiện liên tiếp confirm_frames frame
-                    if confirm_count >= confirm_frames and stable_to_fire:
+                    now_ts = time.monotonic()
+                    if (
+                        confirm_count >= confirm_frames
+                        and stable_to_fire
+                        and (now_ts - last_fire_ts) > 0.3
+                    ):
                         _fire_laser(laser, laser_pulse_sec, state_debug_log)
+                        last_fire_ts = now_ts
+
+                        time.sleep(0.2)
+
+                        if not motor_running:
+                            motor.forward()
+                            motor_running = True
+                            print("[MOTOR] FORWARD")
+                            
 
                     if show:
                         cv2.circle(frame, (int(x_center), int(y_center)), 5, (0, 0, 255), -1)
@@ -742,6 +786,11 @@ def main(
                     prev_center = None
                     settle_count = 0
 
+                    if not motor_running:
+                        motor.forward()
+                        motor_running = True
+                        print("[MOTOR] RESUME - target lost")
+
             if show:
                 cv2.imshow("Weed Detection", frame)
                 if cv2.waitKey(1) & 0xFF == 27:
@@ -751,6 +800,10 @@ def main(
     finally:
         cap.release()
         cv2.destroyAllWindows()
+
+        motor.stop()
+        motor.cleanup()
+
         if servo is not None:
             servo.cleanup()
         laser.cleanup()

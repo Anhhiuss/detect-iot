@@ -16,7 +16,7 @@ class WiringConfig:
     servo_tilt_channel: int = 15
 
     # Laser on Raspberry Pi physical pin numbering
-    laser_pin: int = 16
+    laser_pin: int = 23
 
     # L298N on Raspberry Pi physical pin numbering
     motor_in3_pin: int = 32

@@ -44,8 +44,12 @@ class ServoControllerPCA9685:
             return
 
         self._kit = _SERVOKIT(channels=16)
-        self._kit.servo[self.cfg.pan_channel].angle = 90
-        self._kit.servo[self.cfg.tilt_channel].angle = 90
+        #Lưu góc trước chống overshoot
+        self._last_pan = 90
+        self._last_tilt = 90
+        #RESET SERVO VỀ VỊ TRÍ TRUNG TÂM (90°)
+        # self._kit.servo[self.cfg.pan_channel].angle = 90
+        # self._kit.servo[self.cfg.tilt_channel].angle = 90  
 
     def _clamp(self, angle: float) -> float:
         return max(self.cfg.min_angle, min(self.cfg.max_angle, angle))
@@ -54,12 +58,31 @@ class ServoControllerPCA9685:
         if self.simulate:
             print(f"[SERVO PCA9685] Sim pan={pan}, tilt={tilt}")
             return
-
+            #PAN---------------
         if pan is not None:
-            self._kit.servo[self.cfg.pan_channel].angle = self._clamp(pan)
+        #     self._kit.servo[self.cfg.pan_channel].angle = self._clamp(pan)
+        # if tilt is not None:
+        #     self._kit.servo[self.cfg.tilt_channel].angle = self._clamp(tilt)
+        # time.sleep(0.02)
+            pan = max(30, min(150, pan))
+            #Chống nhảy quá xa
+            # MAX_STEP = 999
+            # delta = pan - self._last_pan
+            # if abs(delta) > MAX_STEP:
+            #     pan = self._last_pan + (MAX_STEP if delta > 0 else -MAX_STEP)
+
+            self._kit.servo[self.cfg.pan_channel].angle = pan
+            self._last_pan = pan
+
+            #TILT---------------
         if tilt is not None:
-            self._kit.servo[self.cfg.tilt_channel].angle = self._clamp(tilt)
-        time.sleep(0.02)
+            #khóa góc an toàn
+            tilt = max(75, min(105, tilt))
+            #Cần đảo chiều tilt
+            tilt_hw = 180 - tilt
+            self._kit.servo[self.cfg.tilt_channel].angle = tilt_hw
+            self._last_tilt = tilt
+        time.sleep(0.01) #(Phản ứng nhanh))
 
     def cleanup(self) -> None:
         if self.simulate:

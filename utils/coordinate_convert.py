@@ -71,7 +71,7 @@ def pixel_to_servo_angles(
 
     pan = clamp(cfg.servo_center_pan + angle_x + cfg.offset_pan, cfg.servo_min_pan, cfg.servo_max_pan)
     tilt = clamp(cfg.servo_center_tilt + angle_y + cfg.offset_tilt, cfg.servo_min_tilt, cfg.servo_max_tilt)
-
+    pan = 180 - pan  
     return pan, tilt
 
 
